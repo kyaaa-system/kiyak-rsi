@@ -1,0 +1,29 @@
+name: Update harga Yahoo Finance
+on:
+  schedule:
+    - cron: "0 4 * * 1-5"    # 11:00 WIB (intraday)
+    - cron: "30 9 * * 1-5"   # 16:30 WIB (setelah market tutup)
+  workflow_dispatch:          # tombol "Run workflow" manual
+permissions:
+  contents: write
+concurrency:
+  group: update-prices
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Ambil harga
+        run: node fetch-prices.mjs
+        env:
+          RANGE: 10y
+      - name: Commit jika ada perubahan
+        run: |
+          git config user.name "price-bot"
+          git config user.email "price-bot@users.noreply.github.com"
+          git add data/prices.json
+          git diff --cached --quiet || (git commit -m "update harga $(date -u +'%Y-%m-%d %H:%M') UTC" && git push)
